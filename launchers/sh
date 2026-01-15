@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+
+# Start an interactive shell, which is crucial for it to not exit immediately.
+# The `-s` flag reads commands from standard input.
+/bin/sh -i -s 2>&1 <<'EOF'
+while true; do
+    # Read the sentinel value
+    read -r sentinel
+    if [ -z "$sentinel" ]; then
+        break
+    fi
+
+    # Read lines until the sentinel is found again
+    code_to_run=""
+    while read -r line; do
+        if [ "$line" = "$sentinel" ]; then
+            break
+        fi
+        code_to_run="$code_to_run$line\n"
+    done
+
+    # Evaluate the collected code
+    eval "$code_to_run"
+
+    # Print the sentinel to signal completion
+    printf "%s\n" "$sentinel"
+
+done
+EOF

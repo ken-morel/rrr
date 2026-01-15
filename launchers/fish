@@ -1,4 +1,4 @@
-#!/usr/bin/fish
+#!/usr/bin/env fish
 while true
     read -l sentinel
     if test -z "$sentinel"
