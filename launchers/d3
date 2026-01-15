@@ -1,0 +1,73 @@
+#!/usr/bin/env julia
+
+abstract type ChatMessage end
+
+
+mutable struct Chat
+    messages::Vector{NTuple{2, String}}
+    system::String
+    model::String
+    Chat(model, system) = new(NTuple{2, String}[], model, system)
+end
+printout(c::Chat) = map(c.messages) do (usr, ass)
+    "### USER\n$(usr)\n### ASSISTANT\n$(ass)\n"
+end |> join
+
+
+function getcode()
+    code_to_run = IOBuffer()
+    while !eof(stdin)
+        line = readline()
+        if strip(line) == sentinel
+            break
+        else
+            println(code_to_run, line)
+        end
+    end
+
+    return String(take!(code_to_run))
+end
+
+function callmodel(chat)
+    return proc = run(`gh models run $(model.model) \
+    --system-prompt "$(chat.system)" \
+    --temperature 1.0 \
+    --top-p 1.0
+    "$(printout(chat))"`)
+end
+
+function complete!(chat::Chat, msg::AbstractString)
+    push!(chat.messages, (msg, ""))
+    chat.messages[end] = (msg, callmodel(chat.model, chat))
+    return
+end
+
+
+function julia_main(_)
+    chat = Chat(
+        """
+        You are a helpfull coding assistant and chat assistant, when possible
+        you get directly to the answers, you are given a conversation with
+        parties messages entitled by a ### USER, or ### ASSISTANT, and you aim
+        to provide the next assistant message
+        """
+    )
+    while !eof(stdin)
+        sentinel = strip(readline(stdin))
+        if sentinel == kill
+            exit(0)
+        end
+
+        runtype = strip(readline(stdin))
+        code = getcode()
+
+        if runtype == "s"
+            system = code
+        elseif runtype == "r"
+            complete!(chat, code)
+        end
+    end
+    return
+end
+
+(@main)(a) = julia_main(a)

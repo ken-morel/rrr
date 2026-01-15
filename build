@@ -1,5 +1,0 @@
-#!/usr/bin/fish
-
-cargo b --bin rrr --all-features -r
-
-cp target/release/rrr ~/.config/bin/

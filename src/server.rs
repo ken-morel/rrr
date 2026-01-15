@@ -12,7 +12,7 @@ use super::repls::SimpleRepl;
 
 pub const RRR_SOCKET: &str = "/tmp/rrr.sock";
 
-pub fn run_server() {
+pub fn run_server() -> Result<(), String> {
     let home = current_dir().expect("Error locating current directory");
     let launchers = home.join("launchers");
     let mut launcher_prefix = String::from(launchers.as_path().to_str().expect("Internal error"));
@@ -131,4 +131,5 @@ pub fn run_server() {
             }
         }
     }
+    Ok(())
 }

@@ -7,7 +7,6 @@ function julia_main(_)
         if sentinel == "kill"
             exit(0)
         end
-        isempty(sentinel) && break
 
         runtype = strip(readline(stdin))
 

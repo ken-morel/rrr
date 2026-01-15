@@ -5,15 +5,18 @@ use std::{
 
 use super::server;
 
-pub fn run_client(args: Vec<String>) {
-    const WE: &str = "Error sending message to server";
-    let mut stream = UnixStream::connect(server::RRR_SOCKET).expect("Failed to connect to server");
+pub fn run_client(args: Vec<String>) -> Result<(), String> {
+    let mut stream = match UnixStream::connect(server::RRR_SOCKET) {
+        Ok(stream) => stream,
+        Err(_) => return Err("Could not connect to server, are you sure it's running?".to_string()),
+    };
     let mut text = String::new();
+    let mut res = String::new();
     if args.len() > 1 {
         let replcmd = &args[1];
         if replcmd.starts_with("+") {
             if args.len() < 3 {
-                panic!("Invalid number of arguments, use: +<name> <launcher>")
+                return Err("Invalid number of arguments, use: +<name> <launcher>".to_string());
             }
             let cwd = if args.len() == 4 {
                 &args[3]
@@ -23,34 +26,18 @@ pub fn run_client(args: Vec<String>) {
             let mut replid = replcmd.clone();
             replid.remove(0);
             let launcher = &args[2];
-            stream.write_all(b"create\n").expect(WE);
-            stream.write_all(replid.as_bytes()).expect(WE);
-            stream.write_all(b"\n").expect(WE);
-            stream.write_all(cwd.as_bytes()).expect(WE);
-            stream.write_all(b"\n").expect(WE);
-            stream.write_all(launcher.as_bytes()).expect(WE);
+            res += "create\n";
+            res += replid.as_str();
+            res += "\n";
+            res += cwd.as_str();
+            res += "\n";
+            res += launcher.as_str();
         } else if replcmd.starts_with("-") {
             let mut replid = replcmd.clone();
             replid.remove(0);
-            stream.write_all(b"kill\n").expect(WE);
-            stream.write_all(replid.as_bytes()).expect(WE);
-            stream.write_all(b"\n").expect(WE);
-        } else if replcmd.starts_with(".") {
-            todo!("Not implemented yet");
-            // let mut replid = replcmd.clone();
-            // replid.remove(0);
-            // stream.write_all(b"repl\n").expect(WE);
-            // stream.write_all(replid.as_bytes()).expect(WE);
-            // stream.write_all(b"\n").expect(WE);
-            // loop {
-            //     let mut line = String::new();
-            //     std::io::stdin()
-            //         .read_line(&mut line)
-            //         .expect("Error reading from stdin");
-            //     stream.write_all(line.as_bytes()).expect(WE);
-            //     stream.write_all(b"\n").expect(WE);
-            //     stream.write_all(repl::END_TOKEN.as_bytes()).expect(WE);
-            // }
+            res += "kill\n";
+            res += replid.as_str();
+            res += "\n";
         } else {
             // <name>
             let replid = replcmd;
@@ -59,27 +46,27 @@ pub fn run_client(args: Vec<String>) {
             } else {
                 String::from("r")
             };
-            stream.write_all(b"run\n").expect(WE);
-            stream.write_all(runtype.as_bytes()).expect(WE);
-            stream.write_all(b"\n").expect(WE);
-            stream.write_all(replid.as_bytes()).expect(WE);
-            stream.write_all(b"\n").expect(WE);
+            res += "run\n";
+            res += runtype.as_str();
+            res += "\n";
+            res += replid.as_str();
+            res += "\n";
             let mut content = String::new();
             std::io::stdin()
                 .read_to_string(&mut content)
                 .expect("Error");
-            stream.write_all(content.as_bytes()).expect(WE);
+            res += content.as_str();
         }
     }
-    stream
-        .shutdown(std::net::Shutdown::Write)
-        .expect("Error shutting down connection after end of operaitons");
-
+    if let Err(e) = stream.write_all(res.as_bytes()) {
+        let mut msg = String::from("Error sending query to server: ");
+        msg += e.to_string().as_str();
+        return Err(msg);
+    }
+    _ = stream.shutdown(std::net::Shutdown::Write);
     if let Ok(_) = stream.read_to_string(&mut text) {
         println!("{}", text);
     }
-    stream.flush().expect(WE);
-    stream
-        .shutdown(std::net::Shutdown::Both)
-        .expect("Error shutting down connection after end of operaitons");
+    _ = stream.shutdown(std::net::Shutdown::Both);
+    Ok(())
 }

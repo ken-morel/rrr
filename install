@@ -1,0 +1,16 @@
+#!/usr/bin/sh
+
+cargo b --bin rrr --all-features -r
+
+sudo cp target/release/rrr /usr/bin/rrr
+
+sudo mkdir -p /usr/share/rrr/
+sudo cp ./launchers /usr/share/rrr/ -r
+
+echo "
+#!/usr/bin/bash
+
+cd /usr/share/rrr && /usr/bin/rrr
+" | sudo tee /usr/bin/rrr-server
+
+sudo chmod +x /usr/bin/rrr-server
