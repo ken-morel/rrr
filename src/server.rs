@@ -39,12 +39,18 @@ pub fn run_server() {
                                 let content = buf.trim();
                                 let lines: Vec<&str> = content.split("\n").collect();
                                 let len = lines.len();
-                                if len == 3 && lines[0].eq("create") {
+                                if lines[0].eq("create") {
+                                    if len != 4 {
+                                        _ = conn.write_all(b"Server error: Invalid number of argument lines in request");
+                                        _ = conn.shutdown(std::net::Shutdown::Both);
+                                        continue;
+                                    }
                                     let name = lines[1];
                                     if shells.contains_key(name) {
                                         println!("ERRROR: repl {} already exists", name);
                                     } else {
                                         let mut cmd = String::from(lines[2]);
+                                        let dir = String::from(lines[3]);
                                         if cmd.starts_with("+") {
                                             cmd.replace_range(
                                                 ..1, // sorry, it was too tempting :)
@@ -52,7 +58,7 @@ pub fn run_server() {
                                             );
                                         }
                                         println!("  Spawning: {}", cmd);
-                                        match SimpleRepl::spawn(cmd.as_str()) {
+                                        match SimpleRepl::spawn(dir.as_str(), cmd.as_str()) {
                                             Ok(repl) => {
                                                 println!("Shell spawned");
                                                 _ = conn.write_all(b"REPL created succesfully");
@@ -67,9 +73,26 @@ pub fn run_server() {
                                             }
                                         };
                                     }
-                                } else if len > 2 && lines[0].eq("run") {
+                                } else if lines[0].eq("kill") {
+                                    if lines.len() != 2 {
+                                        _ = conn.write_all(b"Server error: invalid number of argument lines in request");
+                                        _ = conn.shutdown(std::net::Shutdown::Both);
+                                        continue;
+                                    }
                                     let replid = lines[1];
-                                    let codelines = match lines.split_first_chunk::<2>() {
+
+                                    if shells.contains_key(replid) {
+                                        println!("  Killing repl: {replid}");
+                                        shells[replid].kill();
+                                        shells.remove(replid);
+                                        _ = conn.write_all(b"Kill signal sent to shell\n");
+                                    } else {
+                                        _ = conn.write_all(b"Shell does not exist\n");
+                                    }
+                                } else if lines[0].eq("run") {
+                                    let runtype = lines[1];
+                                    let replid = lines[2];
+                                    let codelines = match lines.split_first_chunk::<3>() {
                                         Some(val) => val.1,
                                         None => {
                                             _ = conn
@@ -81,7 +104,7 @@ pub fn run_server() {
                                     };
                                     let code = codelines.join("\n");
                                     if let Some(shell) = shells.get(replid) {
-                                        let output = match shell.evaluate(code) {
+                                        let output = match shell.evaluate(runtype, code.as_str()) {
                                             Ok(res) => res.to_string(),
                                             Err(err) => err,
                                         };

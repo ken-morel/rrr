@@ -40,7 +40,7 @@ impl SimpleRepl
 where
     SimpleRepl: repl::Repl<SimpleRepl>,
 {
-    pub fn spawn(exe: &str) -> repl::SpawnResult<Self> {
+    pub fn spawn(exe: &str, dir: &str) -> repl::SpawnResult<Self> {
         let launcher = match repl_launcher(exe).to_str() {
             Some(c) => String::from(c),
             None => {
@@ -49,10 +49,25 @@ where
                 ))
             }
         };
+        let mut resolvedir = dir.replace(
+            "~",
+            std::env::home_dir()
+                .expect("Error finding home directory")
+                .to_str()
+                .unwrap(),
+        );
+        if resolvedir.eq(".") {
+            resolvedir = std::env::current_dir()
+                .expect("Error finding current directory")
+                .to_str()
+                .unwrap()
+                .to_string();
+        }
         let child = match Command::new(launcher)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
+            .stderr(Stdio::piped())
+            .current_dir(resolvedir)
             .spawn()
         {
             Ok(child) => child,

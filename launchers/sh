@@ -6,12 +6,13 @@
 while true; do
     # Read the sentinel value
     read -r sentinel
-    if [ -z "$sentinel" ]; then
-        break
+    if [ "$sentinel" = "kill" ]; then
+        exit 0
     fi
 
     # Read lines until the sentinel is found again
     code_to_run=""
+    read -r runtyp
     while read -r line; do
         if [ "$line" = "$sentinel" ]; then
             break
@@ -19,8 +20,11 @@ while true; do
         code_to_run="$code_to_run$line\n"
     done
 
-    # Evaluate the collected code
-    eval "$code_to_run"
+    if [ "$runtyp" = "r"]; then
+        eval "$code_to_run"
+    else
+        echo "Not implemented"
+    fi
 
     # Print the sentinel to signal completion
     printf "%s\n" "$sentinel"

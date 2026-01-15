@@ -10,10 +10,10 @@ fn main() {
         println!(
             "
 rrr, the remote repl runner:
-   rrr                    -- to start the server at /tmp/rrr.sock
-   rrr +<id> <replcmd>    -- to create a new repl named <id>
-   rrr <id>               -- to send stdin to repl <id>
-   rrr -<id>              -- to open repl on <id>
+   rrr                        -- to start the server at /tmp/rrr.sock
+   rrr +<id> <replcmd> [dir]  -- to create a new repl named <id> in <dir>
+   rrr <id> [runtype]         -- to send stdin to repl <id>
+   rrr -<id>                  -- to close repl <id>
             "
         )
     } else if args.len() == 1 {

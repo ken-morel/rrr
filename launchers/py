@@ -8,11 +8,10 @@ session_globals = {}
 while True:
     sentinel = sys.stdin.readline().strip()
     if sentinel == "kill":
-        break
-    if not sentinel:
-        break
+        sys.exit(0)
 
     code_to_run = ""
+    runtype = sys.stdin.readline()
     while True:
         line = sys.stdin.readline()
         if line.strip() == sentinel:
@@ -21,9 +20,14 @@ while True:
             code_to_run += line
 
     try:
-        compiled_code = compile(code_to_run, '<stdin>', 'exec')
-        exec(compiled_code, session_globals)
-
+        if runtype == "e":
+            compiled_code = compile(code_to_run, '<stdin>', 'exec')
+            exec(compiled_code, session_globals)
+        elif runtype == "r":
+            compiled_code = compile(code_to_run, '<stdin>', 'exec')
+            print(eval(compiled_code, session_globals))
+        else:
+            print("Not implemented")
     except Exception:
         traceback.print_exc(file=sys.stdout)
 

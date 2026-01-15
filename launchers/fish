@@ -1,9 +1,11 @@
 #!/usr/bin/env fish
 while true
     read -l sentinel
-    if test -z "$sentinel"
-        break
+    if test "$sentinel" = kill
+        exit 0
     end
+
+    read -l runtype
 
     # Read lines until the sentinel is found again
     set code_to_run ""
@@ -12,13 +14,16 @@ while true
             break
         end
         if ! test "$code_to_run" = ""
-            set code_to_run "$code_to_run\n"
+            set code_to_run (echo "$code_to_run")
         end
         set code_to_run "$code_to_run$line"
     end
 
-    # Evaluate the collected code
-    eval "$code_to_run"
+    if test "$runtype" = r
+        eval "$code_to_run"
+    else
+        echo "fish laauncher does not implement msg: '$runtype'"
+    end
 
     # Print the sentinel to signal completion
     echo "$sentinel"
