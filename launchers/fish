@@ -1,0 +1,25 @@
+#!/usr/bin/fish
+while true
+    read -l sentinel
+    if test -z "$sentinel"
+        break
+    end
+
+    # Read lines until the sentinel is found again
+    set code_to_run ""
+    while read -l line
+        if test "$line" = "$sentinel"
+            break
+        end
+        if ! test "$code_to_run" = ""
+            set code_to_run "$code_to_run\n"
+        end
+        set code_to_run "$code_to_run$line"
+    end
+
+    # Evaluate the collected code
+    eval "$code_to_run"
+
+    # Print the sentinel to signal completion
+    echo "$sentinel"
+end
