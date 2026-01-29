@@ -7,7 +7,7 @@ use std::{
 use super::{config::ServerConfig, repl::Repl};
 
 pub const R: u16 = 'r' as u16; // 114
-pub const RRR_PORT: u16 = R + R * 26 + R * 26 ^ 2; // 80142
+pub const RRR_PORT: u16 = R * 26 ^ 3; // 2967
 
 pub fn run_server(conf: ServerConfig) -> Result<(), String> {
     let mut launcher_prefix =

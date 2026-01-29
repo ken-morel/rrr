@@ -15,7 +15,7 @@ rrr, the remote repl runner:
 [conf]
     ip=127.0.0.1                # server listening address(default all available(UNSPECIFIED))
                                 # client query addres
-    p=80142                     # server listening port | client query port
+    p=2967                      # server listening port | client query port
     l=/usr/share/rrr/launchers  # server launchers location
 <launcher>
     An executable file located in the directory specified by launchers config

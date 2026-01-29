@@ -1,16 +1,16 @@
 # rrr
 
-`rrr` the Remote Repl Runner. A client and a server, communicating via unix
-sockets to help you manage and interact with you shells. 
+`rrr` the Remote Repl Runner. A client and a server, communicating via tcp
+sockets to help you manage and interact with shells, or other kind of repl. 
 
-Or to be more broad, rrr actually permits you to create and communicate with
-a managed process.
+Or to be more broad, rrr actually permits you to create and communicate with managed
+a process via pipes.
 
-rrr was made in sort a way it should be quick and fast to interact with it
-using pipes, short commands and even from your editors.
+rrr was made in sort a way it should be simple interact with it
+using pipes, short commands and from your editors.
 
-e.g to evaluate the type of the selected text in helix, and replace it with
-the type name:
+e.g to evaluate the type of the selected text in helix(julia template),
+and replace it with the type name:
 `|rrr <shell> t`
 
 ## Installation
@@ -23,14 +23,19 @@ copies the `rrr` to `/usr/bin`, copies launchers to `/usr/share/rrr/launchers`
 
 ## rrr sever
 
-The server is a simple socket server listening at `/tmp/rrr.sock`, it manages
+The server is a simple socket server listening at 0.0.0.0:2967 by default,
+though you can configure the port and address, it manages
 shell processes and provides an interface to communicate with them.
 
 You need only one server instance running, to start the server, run:
 ```bash
-rrr
+rrr server
 ```
-And that's it.
+You may pass additional information
+
+```bash
+rrr p=1234 ip=127.0.0.1 l=/usr/share/rrr/launchers server
+```
 
 ## rrr client
 
@@ -109,4 +114,27 @@ rrr -<replname>
 rrr -jl-shell
 ```
 
+### Client options
 
+the client offers you the `p` and `ip` options to determine the address
+of the server, you can also use it to communicate with another machine.
+
+```bash
+rrr p=1234 ip=192.168.1.191 +jl jl
+```
+
+## Creating aliasses
+
+The aim of rrr is to be able to use it with quick and short commands with your
+editor, reason why instead of using a persistent configuration, you can create
+aliases for your favorite repls and configurations.
+
+```bash
+alias r='rrr'
+alias r1 = 'rrr 1'
+alias rra = 'rrr ip=192.168.1.1'
+```
+Or surely will you prefer to create scripts which you can place in your path:
+```bash
+#!/usr/bin/env -S /usr/bin/rrr ip=192.168.1.1
+```
