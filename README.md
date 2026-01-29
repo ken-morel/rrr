@@ -85,6 +85,7 @@ end
 rrr +<replname> <templatename>
 # e.g
 rrr +jl-shell jl
+rrr +jl-shell jl ~/projects/julia-project
 ```
 
 ### Sending messages to the repl

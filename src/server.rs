@@ -1,30 +1,24 @@
 use std::{
     collections::HashMap,
-    env::current_dir,
-    fs,
     io::{Read, Write},
-    os::unix::net::UnixListener,
+    net::TcpListener,
 };
 
-use crate::repl::Repl;
+use super::{config::ServerConfig, repl::Repl};
 
-use super::repls::SimpleRepl;
+pub const R: u16 = 'r' as u16; // 114
+pub const RRR_PORT: u16 = R + R * 26 + R * 26 ^ 2; // 80142
 
-pub const RRR_SOCKET: &str = "/tmp/rrr.sock";
-
-pub fn run_server() -> Result<(), String> {
-    let home = current_dir().expect("Error locating current directory");
-    let launchers = home.join("launchers");
-    let mut launcher_prefix = String::from(launchers.as_path().to_str().expect("Internal error"));
+pub fn run_server(conf: ServerConfig) -> Result<(), String> {
+    let mut launcher_prefix =
+        String::from(conf.launchers.as_path().to_str().expect("Internal error"));
     launcher_prefix += "/";
 
-    _ = fs::remove_file(RRR_SOCKET);
+    let mut shells: HashMap<String, Repl> = HashMap::new();
 
-    let mut shells: HashMap<String, SimpleRepl> = HashMap::new();
-
-    println!("Starting server at {}", RRR_SOCKET);
+    println!("Starting server at port {RRR_PORT}");
     // took tip from gemini too
-    match UnixListener::bind(RRR_SOCKET) {
+    match TcpListener::bind(conf.socket_addr) {
         Err(err) => {
             panic!("{}", err.to_string());
         }
@@ -58,7 +52,7 @@ pub fn run_server() -> Result<(), String> {
                                             );
                                         }
                                         println!("  Spawning: {}", cmd);
-                                        match SimpleRepl::spawn(dir.as_str(), cmd.as_str()) {
+                                        match Repl::spawn(dir.as_str(), cmd.as_str()) {
                                             Ok(repl) => {
                                                 println!("Shell spawned");
                                                 _ = conn.write_all(b"REPL created succesfully");

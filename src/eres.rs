@@ -1,3 +1,7 @@
+// todo:
+// when sending a response message, the first line is the result type
+// then we send the data itself
+
 #[derive(Debug)]
 pub enum EvalResult {
     Text(String),

@@ -1,16 +1,49 @@
 #!/usr/bin/sh
 
-cargo b --bin rrr --all-features -r
+build() {
+  echo "Building rrr"
+  cargo b --bin rrr --all-features -r
+}
 
-sudo cp target/release/rrr /usr/bin/rrr
+install_rrr() {
+  echo "Installing rrr"
+  sudo cp target/release/rrr /usr/bin/rrr
 
-sudo mkdir -p /usr/share/rrr/
-sudo cp ./launchers /usr/share/rrr/ -r
+  echo "Copying rrr data"
 
-echo "
-#!/usr/bin/bash
+  sudo mkdir -p /usr/share/rrr/
+  sudo cp ./launchers /usr/share/rrr/ -r  
+}
 
-cd /usr/share/rrr && /usr/bin/rrr
-" | sudo tee /usr/bin/rrr-server
+install_rrr_sever() {
+  echo "Installing rrr server"
+  echo "
+  #!/usr/bin/bash
 
-sudo chmod +x /usr/bin/rrr-server
+  cd /usr/share/rrr && /usr/bin/rrr server
+  " | sudo tee /usr/bin/rrr-server
+  sudo chmod +x /usr/bin/rrr-server  
+}
+
+setup_systemd_service() {
+  echo "Setting up systemd service"
+  echo "
+[Unit]
+Description=RRR Server
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/env /usr/bin/rrr-server
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+  " | sudo tee /etc/systemd/system/rrr.service
+  sudo systemctl disable rrr && sudo systemctl stop rrr || echo "RRR not installed yet"
+  
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now rrr.service
+}
+
+build && install_rrr && install_rrr_sever && setup_systemd_service
