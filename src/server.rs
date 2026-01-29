@@ -16,7 +16,7 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
 
     let mut shells: HashMap<String, Repl> = HashMap::new();
 
-    println!("Starting server at port {RRR_PORT}");
+    println!("Starting server {:?}", conf.socket_addr);
     // took tip from gemini too
     match TcpListener::bind(conf.socket_addr) {
         Err(err) => {

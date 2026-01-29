@@ -20,6 +20,7 @@ impl Client {
         }
     }
     fn _request(&self, req: &String) -> Result<String, String> {
+        println!("connecting to server at {:?}", self.config.socket_addr);
         let mut stream = self.connect()?;
         let mut res = String::new();
         if let Err(e) = stream.write_all(req.as_bytes()) {
@@ -73,27 +74,28 @@ impl Client {
 
 pub fn run_client(conf: ClientConfig, args: Vec<String>) -> Result<(), String> {
     let client = Client::new(conf);
+    println!("{args:?} {conf:?}");
     let response = if (&args[0]).starts_with("+") {
         // +<name>
-        if args.len() < 3 {
+        if args.len() < 2 {
             return Err("Invalid number of arguments, use: +<name> <launcher>".to_string());
         }
-        let cwd = if args.len() == 4 {
-            &args[3]
+        let cwd = if args.len() == 3 {
+            &args[2]
         } else {
             &".".to_string()
         };
-        let mut replid = (&args[1]).clone();
+        let mut replid = (&args[0]).clone();
         replid.remove(0);
-        client.create_repl(replid.as_str(), &args[2], cwd)
+        client.create_repl(replid.as_str(), &args[1], cwd)
     } else if (&args[0]).starts_with("-") {
         // -<name>
-        let mut replid = (&args[1]).clone();
+        let mut replid = (&args[0]).clone();
         replid.remove(0);
         client.kill_repl(replid.as_str())
     } else {
         // <name>
-        let runtype = if let Some(tp) = args.get(2) {
+        let runtype = if let Some(tp) = args.get(1) {
             tp.as_str()
         } else {
             "r"
@@ -103,7 +105,7 @@ pub fn run_client(conf: ClientConfig, args: Vec<String>) -> Result<(), String> {
         std::io::stdin()
             .read_to_string(&mut content)
             .expect("Error");
-        client.query((&args[1]).as_str(), runtype, content.as_str())
+        client.query((&args[0]).as_str(), runtype, content.as_str())
     }?;
     println!("{response}");
     Ok(())

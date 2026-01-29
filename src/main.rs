@@ -43,15 +43,16 @@ fn main() -> Result<(), String> {
         }
         args.push(arg.clone())
     }
-    // println!("{args:#?} and {conf_args:#?}");
     if args.len() == 0 || args[0].eq("help") {
         println!("{RRR_HELP}");
         Ok(())
     } else if args[0].eq("server") {
         let conf = config::ServerConfig::parse(conf_args)?;
+        println!("{conf:#?}");
         server::run_server(conf)
     } else {
         let conf = config::ClientConfig::parse(conf_args)?;
-        client::run_client(conf, os_args)
+        println!("{conf:#?}");
+        client::run_client(conf, args)
     }
 }

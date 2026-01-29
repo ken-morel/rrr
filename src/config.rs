@@ -7,6 +7,7 @@ use std::{
 
 use crate::server::RRR_PORT;
 
+#[derive(Debug, Clone)]
 pub struct ServerConfig {
     pub launchers: PathBuf,
     pub socket_addr: SocketAddrV4,
@@ -59,6 +60,7 @@ impl ServerConfig {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct ClientConfig {
     pub socket_addr: SocketAddrV4,
 }
