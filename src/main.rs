@@ -25,24 +25,35 @@ rrr, the remote repl runner:
 
 fn main() -> Result<(), String> {
     let os_args: Vec<String> = std::env::args().collect();
-    let mut conf_args = HashMap::<&str, &str>::new();
+    let mut conf_args = HashMap::<String, String>::new();
+    config::read_env(&mut conf_args);
     let mut args = Vec::<String>::new();
-
-    let mut is_conf = true;
+    let mut text = Vec::<String>::new();
+    let mut part: u8 = 0; // 0 -> conf, 1 -> params, 2 -> text
+    let mut has_text = false;
     for arg in (&os_args)
         .split_first()
         .expect("ERRROR: RRR did not receive program name")
         .1
     {
-        if is_conf {
+        if arg.eq("--") {
+            part = 2;
+            has_text = true;
+            continue;
+        }
+        if part == 0 {
             if let Some(parts) = arg.split_once("=") {
-                conf_args.insert(parts.0, parts.1);
+                conf_args.insert(parts.0.to_string(), parts.1.to_string());
                 continue;
             } else {
-                is_conf = false
+                part += 1
             }
         }
-        args.push(arg.clone())
+        if part == 1 {
+            args.push(arg.clone())
+        } else if part == 2 {
+            text.push(arg.clone());
+        }
     }
     if args.len() == 0 || args[0].eq("help") {
         println!("{RRR_HELP}");
@@ -53,6 +64,10 @@ fn main() -> Result<(), String> {
         server::run_server(conf)
     } else {
         let conf = config::ClientConfig::parse(conf_args)?;
-        client::run_client(conf, args)
+        client::run_client(
+            conf,
+            args,
+            if has_text { Some(text.join(" ")) } else { None },
+        )
     }
 }

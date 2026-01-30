@@ -77,7 +77,11 @@ impl Client {
     }
 }
 
-pub fn run_client(conf: ClientConfig, args: Vec<String>) -> Result<(), String> {
+pub fn run_client(
+    conf: ClientConfig,
+    args: Vec<String>,
+    input: Option<String>,
+) -> Result<(), String> {
     // println!("{args:?} {conf:?}");
     let client = Client::new(conf);
     let response = if (&args[0]).starts_with("+") {
@@ -106,10 +110,15 @@ pub fn run_client(conf: ClientConfig, args: Vec<String>) -> Result<(), String> {
             "r"
         };
 
-        let mut content = String::new();
-        std::io::stdin()
-            .read_to_string(&mut content)
-            .expect("Error");
+        let content = if let Some(txt) = input {
+            txt
+        } else {
+            let mut content = String::new();
+            std::io::stdin()
+                .read_to_string(&mut content)
+                .expect("Error");
+            content
+        };
         client.query((&args[0]).as_str(), runtype, content.as_str())
     }?;
     println!("{response}");

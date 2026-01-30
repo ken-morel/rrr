@@ -14,15 +14,26 @@ pub struct ServerConfig {
     pub passcode: String,
 }
 
-fn parse_passcode(map: &HashMap<&str, &str>) -> Result<String, String> {
+pub fn read_env(map: &mut HashMap<String, String>) {
+    std::env::vars().for_each(|(key, value)| {
+        if key.starts_with("RRR_") {
+            let k = key.to_lowercase();
+            let n = k.split_at(4);
+            let v = value.clone();
+            map.insert(n.1.to_string(), v);
+        }
+    });
+}
+
+fn parse_passcode(map: &HashMap<String, String>) -> Result<String, String> {
     if let Some(pass_str) = map.get("k") {
-        Ok(String::from(*pass_str))
+        Ok(pass_str.clone())
     } else {
         Ok(String::from(RRR_PASSCODE))
     }
 }
 fn parse_socket_addr(
-    map: &HashMap<&str, &str>,
+    map: &HashMap<String, String>,
     default_ip: Ipv4Addr,
     default_port: u16,
 ) -> Result<SocketAddrV4, String> {
@@ -48,7 +59,7 @@ fn parse_socket_addr(
 }
 
 impl ServerConfig {
-    pub fn parse(map: HashMap<&str, &str>) -> Result<Self, String> {
+    pub fn parse(map: HashMap<String, String>) -> Result<Self, String> {
         let launchers = if let Some(l_str) = map.get("l") {
             PathBuf::from(l_str)
         } else {
@@ -78,7 +89,7 @@ pub struct ClientConfig {
     pub passcode: String,
 }
 impl ClientConfig {
-    pub fn parse(map: HashMap<&str, &str>) -> Result<Self, String> {
+    pub fn parse(map: HashMap<String, String>) -> Result<Self, String> {
         let socket_addr = parse_socket_addr(&map, Ipv4Addr::LOCALHOST, RRR_PORT)?;
         let passcode = parse_passcode(&map)?;
         Ok(Self {

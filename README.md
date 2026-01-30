@@ -37,6 +37,12 @@ You may pass additional information
 rrr p=1234 ip=127.0.0.1 l=/usr/share/rrr/launchers server
 ```
 
+### passcode
+
+Both the server and client take the `k=` configuration which specifies
+a passcode the client will send it it's requests for the server to verify
+with it's own. Just plain comparism, no hashing or something.
+
 ## rrr client
 
 The rrr client provides an interface to communicate with the server.
@@ -100,11 +106,13 @@ rrr <replname> [cmd]
 # e.g
 echo "c = 5" | rrr jl-shell
 echo "c"     | rrr jl-shell t
+rrr jl-shell t - "c = 7"
 ```
 
 The command receives the code from stdin, and takes an optional second argument
 default to "r" which is simply an additional hint sent to the launcher, to
 request for some thing specific, e.g `t` to get the type of the passed element.
+
 
 ### Shutting down a repl
 
@@ -120,7 +128,7 @@ the client offers you the `p` and `ip` options to determine the address
 of the server, you can also use it to communicate with another machine.
 
 ```bash
-rrr p=1234 ip=192.168.1.191 +jl jl
+rrr p=1234 ip=192.168.1.191 k=passcode +jl jl
 ```
 
 ## Creating aliasses
@@ -132,9 +140,37 @@ aliases for your favorite repls and configurations.
 ```bash
 alias r='rrr'
 alias r1 = 'rrr 1'
-alias rra = 'rrr ip=192.168.1.1'
+alias rra = 'rrr k=password121 ip=192.168.1.1'
 ```
-Or surely will you prefer to create scripts which you can place in your path:
+Or surely will you prefer to create scripts which you can place in your path
+in case your editor does not pass through your shell:
 ```bash
 #!/usr/bin/env -S /usr/bin/rrr ip=192.168.1.1
+```
+
+## Environment variables
+
+You can pass configuration using environment variables too, and that should
+be prefered than using aliasses for things like passcode, directly passed
+arguments have precedence over environment variables though. It's actually
+quite simple, use the parameter's name, preceded by `RRR_`, e.g:
+```bash
+RRR_IP = 192.168.1.1
+RRR_K = My Secret passcode
+RRR_P = 12345
+RRR_L = /usr/share/rrr/launchers
+```
+RRR will simply isolate and lower what's after the `RRR_` and pake as though
+you passed that as configuration.
+
+## My config
+
+> ~/.config/fish/conf.d/rrr.fish
+```fish
+set -gx RRR_K  'Something here..., but what?'
+
+alias r rrr
+alias r1 `rrr 1`
+alias r2 `rrr 2`
+alias r3 `rrr 3`
 ```
