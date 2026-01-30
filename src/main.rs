@@ -17,6 +17,7 @@ rrr, the remote repl runner:
                                 # client query addres
     p=2967                      # server listening port | client query port
     l=/usr/share/rrr/launchers  # server launchers location
+    k=@Errror                   # a passcode
 <launcher>
     An executable file located in the directory specified by launchers config
     option.
@@ -52,7 +53,6 @@ fn main() -> Result<(), String> {
         server::run_server(conf)
     } else {
         let conf = config::ClientConfig::parse(conf_args)?;
-        println!("{conf:#?}");
         client::run_client(conf, args)
     }
 }

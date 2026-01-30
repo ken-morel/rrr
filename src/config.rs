@@ -5,12 +5,21 @@ use std::{
     path::PathBuf,
 };
 
-use crate::server::RRR_PORT;
+use crate::server::{RRR_PASSCODE, RRR_PORT};
 
 #[derive(Debug, Clone)]
 pub struct ServerConfig {
     pub launchers: PathBuf,
     pub socket_addr: SocketAddrV4,
+    pub passcode: String,
+}
+
+fn parse_passcode(map: &HashMap<&str, &str>) -> Result<String, String> {
+    if let Some(pass_str) = map.get("k") {
+        Ok(String::from(*pass_str))
+    } else {
+        Ok(String::from(RRR_PASSCODE))
+    }
 }
 fn parse_socket_addr(
     map: &HashMap<&str, &str>,
@@ -53,20 +62,28 @@ impl ServerConfig {
             }
         };
         let socket_addr = parse_socket_addr(&map, Ipv4Addr::UNSPECIFIED, RRR_PORT)?;
+        let passcode = parse_passcode(&map)?;
+
         Ok(Self {
             launchers,
             socket_addr,
+            passcode,
         })
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct ClientConfig {
     pub socket_addr: SocketAddrV4,
+    pub passcode: String,
 }
 impl ClientConfig {
     pub fn parse(map: HashMap<&str, &str>) -> Result<Self, String> {
         let socket_addr = parse_socket_addr(&map, Ipv4Addr::LOCALHOST, RRR_PORT)?;
-        Ok(Self { socket_addr })
+        let passcode = parse_passcode(&map)?;
+        Ok(Self {
+            socket_addr,
+            passcode,
+        })
     }
 }

@@ -20,9 +20,14 @@ impl Client {
         }
     }
     fn _request(&self, req: &String) -> Result<String, String> {
-        println!("connecting to server at {:?}", self.config.socket_addr);
         let mut stream = self.connect()?;
         let mut res = String::new();
+        if let Err(e) = stream.write_all((self.config.passcode.clone() + "\n").as_bytes()) {
+            return Err(
+                "Error querying server, sending initial passcode".to_string()
+                    + e.to_string().as_str(),
+            );
+        }
         if let Err(e) = stream.write_all(req.as_bytes()) {
             return Err("Error sending query to server: ".to_string() + e.to_string().as_str());
         }
@@ -73,8 +78,8 @@ impl Client {
 }
 
 pub fn run_client(conf: ClientConfig, args: Vec<String>) -> Result<(), String> {
+    // println!("{args:?} {conf:?}");
     let client = Client::new(conf);
-    println!("{args:?} {conf:?}");
     let response = if (&args[0]).starts_with("+") {
         // +<name>
         if args.len() < 2 {

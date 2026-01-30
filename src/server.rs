@@ -8,6 +8,7 @@ use super::{config::ServerConfig, repl::Repl};
 
 pub const R: u16 = 'r' as u16; // 114
 pub const RRR_PORT: u16 = R * 26 ^ 3; // 2967
+pub const RRR_PASSCODE: &str = "rrr";
 
 pub fn run_server(conf: ServerConfig) -> Result<(), String> {
     let mut launcher_prefix =
@@ -17,7 +18,6 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
     let mut shells: HashMap<String, Repl> = HashMap::new();
 
     println!("Starting server {:?}", conf.socket_addr);
-    // took tip from gemini too
     match TcpListener::bind(conf.socket_addr) {
         Err(err) => {
             panic!("{}", err.to_string());
@@ -30,8 +30,22 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                         let mut buf = String::new();
                         match conn.read_to_string(&mut buf) {
                             Ok(_) => {
-                                let content = buf.trim();
-                                let lines: Vec<&str> = content.split("\n").collect();
+                                let splits = buf.trim().split("\n").collect::<Vec<&str>>();
+                                let (pass, lines) = match splits.split_first() {
+                                    Some(s) => s,
+                                    None => {
+                                        println!("Error, invalid request");
+                                        continue;
+                                    }
+                                };
+
+                                if *pass != conf.passcode {
+                                    println!("Passcode {pass} is invalid");
+                                    _ = conn.write_all(b"Invalid passcode");
+                                    _ = conn.shutdown(std::net::Shutdown::Both);
+                                    continue;
+                                }
+
                                 let len = lines.len();
                                 if lines[0].eq("create") {
                                     if len != 4 {
