@@ -1,6 +1,6 @@
 // I completely love this
 use std::{
-    io::{Read, Write},
+    io::Write,
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     thread::sleep,

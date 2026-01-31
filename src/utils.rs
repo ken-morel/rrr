@@ -11,8 +11,12 @@ where
                 return Some(str);
             }
         } else {
-            return None;
+            break;
         }
     }
-    None
+    if !str.is_empty() {
+        Some(str)
+    } else {
+        None
+    }
 }

@@ -57,6 +57,7 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                                     let name = lines[1];
                                     if shells.contains_key(name) {
                                         println!("ERRROR: repl {} already exists", name);
+                                        _ = conn.write_all(b"Repl already exists");
                                     } else {
                                         let mut cmd = String::from(lines[2]);
                                         let dir = String::from(lines[3]);
@@ -117,7 +118,8 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                                         match repl.evaluate(runtype, code.as_str()) {
                                             Ok(_) => {
                                                 for line in repl.by_ref() {
-                                                    _ = conn.write_all(line.as_bytes())
+                                                    _ = conn.write_all(line.as_bytes());
+                                                    _ = conn.write_all(b"\n");
                                                 }
                                             }
                                             Err(err) => {
@@ -125,7 +127,7 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                                             }
                                         };
                                     } else {
-                                        _ = conn.write_all(b"Chell does not exist");
+                                        _ = conn.write_all(b"Repl does not exist");
                                     }
                                 }
                             }
