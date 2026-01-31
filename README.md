@@ -106,7 +106,7 @@ rrr <replname> [cmd]
 # e.g
 echo "c = 5" | rrr jl-shell
 echo "c"     | rrr jl-shell t
-rrr jl-shell t - "c = 7"
+rrr jl-shell t -- c = 7
 ```
 
 The command receives the code from stdin, and takes an optional second argument

@@ -18,15 +18,24 @@ install_rrr() {
 install_rrr_sever() {
   echo "Installing rrr server"
   echo "
-  #!/usr/bin/bash
+  #!/usr/bin/env sh
 
   cd /usr/share/rrr && /usr/bin/rrr server
   " | sudo tee /usr/bin/rrr-server
   sudo chmod +x /usr/bin/rrr-server  
 }
 
+# Print a newline character, as the -s option suppresses the newline
+
 setup_systemd_service() {
-  echo "Setting up systemd service"
+
+  echo "Enter a password, hit enter to use RRR_K='$RRR_K'"
+  IFS= read -r -s -p "> " password
+  if [ -z $password ]; then
+    password=$RRR_K
+  fi
+  echo "Creating up systemd service"
+
   echo "
 [Unit]
 Description=RRR Server
@@ -36,6 +45,7 @@ After=network.target
 ExecStart=/usr/bin/env /usr/bin/rrr-server
 Restart=always
 RestartSec=10
+Environment=\"RRR_K=$password\"
 
 [Install]
 WantedBy=multi-user.target
@@ -47,3 +57,5 @@ WantedBy=multi-user.target
 }
 
 build && install_rrr && install_rrr_sever && setup_systemd_service
+
+

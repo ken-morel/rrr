@@ -1,4 +1,5 @@
 use std::{
+    cell::RefCell,
     collections::HashMap,
     io::{Read, Write},
     net::TcpListener,
@@ -7,7 +8,7 @@ use std::{
 use super::{config::ServerConfig, repl::Repl};
 
 pub const R: u16 = 'r' as u16; // 114
-pub const RRR_PORT: u16 = R * 26 ^ 3; // 2967
+pub const RRR_PORT: u16 = R * (26 ^ 3); // 2967
 pub const RRR_PASSCODE: &str = "rrr";
 
 pub fn run_server(conf: ServerConfig) -> Result<(), String> {
@@ -15,9 +16,9 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
         String::from(conf.launchers.as_path().to_str().expect("Internal error"));
     launcher_prefix += "/";
 
-    let mut shells: HashMap<String, Repl> = HashMap::new();
+    let mut shells: HashMap<String, RefCell<Repl>> = HashMap::new();
 
-    println!("Starting server {:?}", conf.socket_addr);
+    println!("Starting server at {:?}", conf.socket_addr);
     match TcpListener::bind(conf.socket_addr) {
         Err(err) => {
             panic!("{}", err.to_string());
@@ -70,7 +71,7 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                                             Ok(repl) => {
                                                 println!("Shell spawned");
                                                 _ = conn.write_all(b"REPL created succesfully");
-                                                shells.insert(name.to_string(), repl);
+                                                shells.insert(name.to_string(), RefCell::new(repl));
                                                 println!("  REPL: {} created", name);
                                             }
                                             Err(err) => {
@@ -91,7 +92,7 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
 
                                     if shells.contains_key(replid) {
                                         println!("  Killing repl: {replid}");
-                                        shells[replid].kill();
+                                        shells[replid].borrow_mut().kill();
                                         shells.remove(replid);
                                         _ = conn.write_all(b"Kill signal sent to shell\n");
                                     } else {
@@ -111,14 +112,18 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                                         }
                                     };
                                     let code = codelines.join("\n");
-                                    if let Some(shell) = shells.get(replid) {
-                                        let output = match shell.evaluate(runtype, code.as_str()) {
-                                            Ok(res) => res.to_string(),
-                                            Err(err) => err,
+                                    if let Some(replcell) = shells.get(replid) {
+                                        let mut repl = replcell.borrow_mut();
+                                        match repl.evaluate(runtype, code.as_str()) {
+                                            Ok(_) => {
+                                                for line in repl.by_ref() {
+                                                    _ = conn.write_all(line.as_bytes())
+                                                }
+                                            }
+                                            Err(err) => {
+                                                _ = conn.write_all(err.as_bytes());
+                                            }
                                         };
-                                        if let Err(err) = conn.write_all(output.as_bytes()) {
-                                            println!("  Error sending output to client: {}", err);
-                                        }
                                     } else {
                                         _ = conn.write_all(b"Chell does not exist");
                                     }
@@ -133,7 +138,7 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                         }
                     }
                     Err(err) => {
-                        println!("CONERRROR: {}", err.to_string());
+                        println!("CONERRROR: {}", err);
                     }
                 }
             }

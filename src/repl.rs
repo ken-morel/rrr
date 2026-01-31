@@ -1,32 +1,13 @@
 // I completely love this
-use {
-    std::{
-        cell::{
-            RefCell,
-            RefMut,
-        },
-        io::{
-            BufRead,
-            BufReader,
-            Read,
-            Write,
-        },
-        path::{
-            Path,
-            PathBuf,
-        },
-        process::{
-            Child,
-            ChildStdin,
-            ChildStdout,
-            Command,
-            Stdio,
-        },
-        thread::sleep,
-        time::Duration,
-    },
-    super::eres
+use std::{
+    io::{Read, Write},
+    path::{Path, PathBuf},
+    process::{Child, Command, Stdio},
+    thread::sleep,
+    time::Duration,
 };
+
+use crate::utils::read_line;
 
 pub const END_TOKEN: &str = "~THE END~";
 
@@ -35,8 +16,8 @@ pub fn repl_launcher(name: &str) -> Box<PathBuf> {
 }
 
 pub struct Repl {
-    stdout: RefCell<ChildStdout>,
-    stdin: RefCell<ChildStdin>,
+    // stdout: RefCell<ChildStdout>,
+    process: Child,
 }
 
 impl Repl {
@@ -73,58 +54,46 @@ impl Repl {
             Ok(child) => child,
             Err(err) => return Err(err.to_string()),
         };
-        Repl::from_child(child)
+        Ok(Self { process: child })
     }
-    pub fn from_child(child: Child) -> Result<Self, String> {
-        if let Some(stdin) =  child.stdin && let Some(stdout) = child.stdout {
-            // FIX: wanted to put child here, but lsp talks about some partial
-            // move crap. :-(
-            return Ok(Self {
-                stdin: RefCell::new(stdin),
-                stdout: RefCell::new(stdout),
-            })
+
+    pub fn evaluate(&mut self, runtype: &str, txt: &str) -> Result<(), String> {
+        if let Err(e) = writeln!(
+            match &self.process.stdin {
+                Some(s) => s,
+                None => return Err(String::from("Child has no .stdin")),
+            },
+            "{END_TOKEN}\n{runtype}\n{txt}\n{END_TOKEN}"
+        ) {
+            Err(e.to_string())
         } else {
-            return Err(String::from("Error getting spawned child input and output streams"));
+            Ok(())
         }
-
-    }
-    pub fn streams(&self) -> (RefMut<'_, ChildStdin>, RefMut<'_, ChildStdout>) {
-        (self.stdin.borrow_mut(), self.stdout.borrow_mut())
-    }
-
-    pub fn parse_eval_result(&self, txt: String) -> eres::EvalResult {
-        if txt.starts_with("ERRROR") {
-            eres::EvalResult::Error(txt)
-        } else {
-            eres::EvalResult::Text(txt)
-        }
-    }
-    pub fn evaluate(&self,runtype: &str , txt: &str) -> Result<eres::EvalResult, String> {
-        let (mut input, mut output) = self.streams();
-        let mut reader = BufReader::new(output.by_ref());
-
-        writeln!(input, "{END_TOKEN}\n{runtype}\n{txt}\n{END_TOKEN}").expect("Error sending message to child process");
-
-        let mut ln = String::new();
-        let mut output = String::new();
-        loop {
-            ln.clear();
-            match reader.read_line(&mut ln) {
-                Err(err) => return Err(err.to_string()),
-                Ok(_) =>  {
-                    if std::cmp::Ordering::Equal == ln.trim().cmp(END_TOKEN) {
-                        break;
-                    } else {
-                        output += ln.as_str();
-                    }
-                },
-            };
-        }
-        Ok(self.parse_eval_result(output))
     }
     pub fn kill(&self) {
-        let (mut input, _) = self.streams();
-        _ = writeln!(input, "kill\n");
+        _ = writeln!(
+            match &self.process.stdin {
+                Some(s) => s,
+                None => return,
+            },
+            "kill\n"
+        );
         sleep(Duration::from_secs(5));
+    }
+}
+impl Iterator for Repl {
+    type Item = String;
+    fn next(&mut self) -> Option<String> {
+        match &mut self.process.stdout {
+            None => None,
+            Some(stdout) => {
+                let str = read_line(stdout)?;
+                if str.eq(END_TOKEN) {
+                    None
+                } else {
+                    Some(str)
+                }
+            }
+        }
     }
 }

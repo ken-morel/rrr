@@ -5,6 +5,7 @@ mod config;
 mod eres;
 mod repl;
 mod server;
+mod utils;
 
 const RRR_HELP: &str = "
 rrr, the remote repl runner:
@@ -31,7 +32,7 @@ fn main() -> Result<(), String> {
     let mut text = Vec::<String>::new();
     let mut part: u8 = 0; // 0 -> conf, 1 -> params, 2 -> text
     let mut has_text = false;
-    for arg in (&os_args)
+    for arg in os_args
         .split_first()
         .expect("ERRROR: RRR did not receive program name")
         .1
@@ -55,7 +56,7 @@ fn main() -> Result<(), String> {
             text.push(arg.clone());
         }
     }
-    if args.len() == 0 || args[0].eq("help") {
+    if args.is_empty() || args[0].eq("help") {
         println!("{RRR_HELP}");
         Ok(())
     } else if args[0].eq("server") {

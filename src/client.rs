@@ -3,49 +3,58 @@ use std::{
     net::TcpStream,
 };
 
-use crate::config::ClientConfig;
+use crate::{config::ClientConfig, utils::read_line};
 
 pub struct Client {
     config: ClientConfig,
+    stream: Option<TcpStream>,
 }
 
 impl Client {
     pub fn new(config: ClientConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            stream: None,
+        }
     }
-    pub fn connect(&self) -> Result<TcpStream, String> {
+    pub fn connect(&mut self) -> Result<(), String> {
         match TcpStream::connect(self.config.socket_addr) {
-            Ok(stream) => Ok(stream),
+            Ok(stream) => {
+                self.stream = Some(stream);
+                Ok(())
+            }
             Err(_) => Err("Could not connect to server, are you sure it's running?".to_string()),
         }
     }
-    fn _request(&self, req: &String) -> Result<String, String> {
-        let mut stream = self.connect()?;
-        let mut res = String::new();
-        if let Err(e) = stream.write_all((self.config.passcode.clone() + "\n").as_bytes()) {
-            return Err(
-                "Error querying server, sending initial passcode".to_string()
-                    + e.to_string().as_str(),
-            );
+    fn _request(&mut self, req: &String) -> Result<(), String> {
+        self.connect()?;
+        if let Some(stream) = &mut self.stream {
+            if let Err(e) = stream.write_all((self.config.passcode.clone() + "\n").as_bytes()) {
+                return Err(
+                    "Error querying server, sending initial passcode".to_string()
+                        + e.to_string().as_str(),
+                );
+            }
+            if let Err(e) = stream.write_all(req.as_bytes()) {
+                return Err("Error sending query to server: ".to_string() + e.to_string().as_str());
+            }
+            if let Err(e) = stream.shutdown(std::net::Shutdown::Write) {
+                return Err(
+                    "Error shutting down write stream: ".to_string() + e.to_string().as_str()
+                );
+            }
+            Ok(())
+        } else {
+            Err(String::from("Client failed to connect"))
         }
-        if let Err(e) = stream.write_all(req.as_bytes()) {
-            return Err("Error sending query to server: ".to_string() + e.to_string().as_str());
-        }
-        if let Err(e) = stream.shutdown(std::net::Shutdown::Write) {
-            return Err("Error shutting down write stream: ".to_string() + e.to_string().as_str());
-        }
-        if let Err(e) = stream.read_to_string(&mut res) {
-            return Err("Error reading data from connection: ".to_string() + e.to_string().as_str());
-        }
-        Ok(res)
     }
 
     pub fn create_repl(
-        &self,
+        &mut self,
         replid: &str,
         template: &str,
         workdir: &str,
-    ) -> Result<String, String> {
+    ) -> Result<(), String> {
         let mut req = String::new();
 
         req += "create\n";
@@ -56,7 +65,7 @@ impl Client {
         req += template;
         self._request(&req)
     }
-    pub fn kill_repl(&self, name: &str) -> Result<String, String> {
+    pub fn kill_repl(&mut self, name: &str) -> Result<(), String> {
         let mut req = String::new();
 
         req += "kill\n";
@@ -64,7 +73,7 @@ impl Client {
         req += "\n";
         self._request(&req)
     }
-    pub fn query(&self, replid: &str, query: &str, msg: &str) -> Result<String, String> {
+    pub fn query(&mut self, replid: &str, query: &str, msg: &str) -> Result<(), String> {
         let mut req = String::new();
 
         req += "run\n";
@@ -77,14 +86,25 @@ impl Client {
     }
 }
 
+impl Iterator for Client {
+    type Item = String;
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(stream) = &mut self.stream {
+            read_line(stream)
+        } else {
+            None
+        }
+    }
+}
+
 pub fn run_client(
     conf: ClientConfig,
     args: Vec<String>,
     input: Option<String>,
 ) -> Result<(), String> {
     // println!("{args:?} {conf:?}");
-    let client = Client::new(conf);
-    let response = if (&args[0]).starts_with("+") {
+    let mut client = Client::new(conf);
+    if args[0].starts_with("+") {
         // +<name>
         if args.len() < 2 {
             return Err("Invalid number of arguments, use: +<name> <launcher>".to_string());
@@ -94,12 +114,12 @@ pub fn run_client(
         } else {
             &".".to_string()
         };
-        let mut replid = (&args[0]).clone();
+        let mut replid = args[0].clone();
         replid.remove(0);
         client.create_repl(replid.as_str(), &args[1], cwd)
-    } else if (&args[0]).starts_with("-") {
+    } else if args[0].starts_with("-") {
         // -<name>
-        let mut replid = (&args[0]).clone();
+        let mut replid = args[0].clone();
         replid.remove(0);
         client.kill_repl(replid.as_str())
     } else {
@@ -119,8 +139,10 @@ pub fn run_client(
                 .expect("Error");
             content
         };
-        client.query((&args[0]).as_str(), runtype, content.as_str())
+        client.query(args[0].as_str(), runtype, content.as_str())
     }?;
-    println!("{response}");
+    for line in client {
+        println!("{line}");
+    }
     Ok(())
 }

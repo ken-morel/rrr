@@ -1,6 +1,4 @@
-// todo:
-// when sending a response message, the first line is the result type
-// then we send the data itself
+use std::fmt::Display;
 
 #[derive(Debug)]
 pub enum EvalResult {
@@ -8,11 +6,11 @@ pub enum EvalResult {
     Error(String),
 }
 
-impl EvalResult {
-    pub fn to_string(&self) -> String {
+impl Display for EvalResult {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
         match self {
-            Self::Text(txt) => txt.clone(),
-            Self::Error(err) => err.clone(),
+            Self::Text(txt) => txt.fmt(fmt),
+            Self::Error(err) => err.fmt(fmt),
         }
     }
 }
