@@ -114,7 +114,9 @@ pub fn run_client(
 ) -> Result<(), String> {
     // println!("{args:?} {conf:?}");
     let mut client = Client::new(conf);
-    if args[0].starts_with("+") {
+    if args[0].eq("ls") {
+        client.ls()
+    } else if args[0].starts_with("+") {
         // +<name>
         if args.len() < 2 {
             return Err("Invalid number of arguments, use: +<name> <launcher>".to_string());
@@ -175,9 +177,19 @@ pub fn run_client(
                 }
             } else if code.starts_with("!") {
                 code.remove(0);
-                std::process::Command::new("sh")
+                match &mut std::process::Command::new("sh")
                     .arg("-c")
-                    .arg(code.as_str());
+                    .stdin(std::process::Stdio::inherit())
+                    .stdout(std::process::Stdio::inherit())
+                    .stderr(std::process::Stdio::inherit())
+                    .arg(code.as_str())
+                    .spawn()
+                {
+                    Ok(c) => {
+                        _ = c.wait();
+                    }
+                    Err(e) => println!("ERRROR: {e}"),
+                };
             } else if let Err(e) = client.query(replid.as_str(), runtype, code.as_str()) {
                 println!("ERRROR: querying server: {e}");
             }
@@ -187,8 +199,6 @@ pub fn run_client(
             }
         }
         Ok(())
-    } else if args[0].starts_with("*") {
-        client.ls()
     } else {
         // <name>
         let runtype = if let Some(tp) = args.get(1) {

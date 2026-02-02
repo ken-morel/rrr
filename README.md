@@ -127,7 +127,7 @@ rrr -jl-shell
 ### listing repls
 
 ```bash
-rrr *
+rrr ls
 ```
 
 ### Running a repl

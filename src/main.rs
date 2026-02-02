@@ -8,12 +8,12 @@ mod utils;
 
 const RRR_HELP: &str = "
 rrr, the remote repl runner:
-   rrr [conf] server                 -- start the server at /tmp/rrr.sock
+   rrr [conf] server                 -- start the server
+   rrr [conf] ls                     -- list active repls
    rrr [conf] +<id> <launcher> [dir] -- create a new repl named <id> in <dir> using <launcher>
    rrr [conf] <id> [runtype]         -- send stdin to repl <id>
    rrr [conf] -<id>                  -- kill repl <id>
    rrr [conf] %<id>                  -- start an actual repl querying <id>
-   rrr [conf] *                      -- list active repls
 [conf]
     ip=127.0.0.1                # server listening address(default all available(UNSPECIFIED))
                                 # client query addres
