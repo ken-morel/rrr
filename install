@@ -7,6 +7,8 @@ build() {
 
 install_rrr() {
   echo "Installing rrr"
+
+  sudo rm -rf /usr/bin/rrr
   sudo cp target/release/rrr /usr/bin/rrr
 
   echo "Copying rrr data"

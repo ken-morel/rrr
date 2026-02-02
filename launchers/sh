@@ -1,7 +1,11 @@
 #!/usr/bin/env sh
 
+
+
+
 # Start an interactive shell, which is crucial for it to not exit immediately.
 # The `-s` flag reads commands from standard input.
+ 
 /bin/sh -i -s 2>&1 <<'EOF'
 while true; do
     # Read the sentinel value
@@ -22,6 +26,9 @@ while true; do
 
     if [ "$runtyp" = "r"]; then
         eval "$code_to_run"
+    fi
+    if [ "$runtyp" = ".p"]; then
+        echo '$'
     else
         echo "Not implemented"
     fi

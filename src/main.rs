@@ -2,17 +2,18 @@ use std::collections::HashMap;
 
 mod client;
 mod config;
-mod eres;
 mod repl;
 mod server;
 mod utils;
 
 const RRR_HELP: &str = "
 rrr, the remote repl runner:
-   rrr [conf] server                 -- to start the server at /tmp/rrr.sock
-   rrr [conf] +<id> <launcher> [dir] -- to create a new repl named <id> in <dir>
-   rrr [conf] <id> [runtype]         -- to send stdin to repl <id>
-   rrr [conf] -<id>                  -- to kill repl <id>
+   rrr [conf] server                 -- start the server at /tmp/rrr.sock
+   rrr [conf] +<id> <launcher> [dir] -- create a new repl named <id> in <dir> using <launcher>
+   rrr [conf] <id> [runtype]         -- send stdin to repl <id>
+   rrr [conf] -<id>                  -- kill repl <id>
+   rrr [conf] %<id>                  -- start an actual repl querying <id>
+   rrr [conf] *                      -- list active repls
 [conf]
     ip=127.0.0.1                # server listening address(default all available(UNSPECIFIED))
                                 # client query addres

@@ -13,18 +13,18 @@ while true
         if test "$line" = "$sentinel"
             break
         end
-        if ! test "$code_to_run" = ""
-            set code_to_run (echo "$code_to_run")
-        end
-        set code_to_run "$code_to_run$line"
+        set -a code_to_run $line
     end
 
     if test "$runtype" = r
-        eval "$code_to_run"
+        eval $code_to_run
+    else if test "$runtype" = .p
+        fish_prompt
     else
-        echo "fish laauncher does not implement msg: '$runtype'"
+        echo -n "fish launcher does not implement msg: '$runtype'"
     end
 
     # Print the sentinel to signal completion
+    echo
     echo "$sentinel"
 end

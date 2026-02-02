@@ -16,7 +16,7 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
         String::from(conf.launchers.as_path().to_str().expect("Internal error"));
     launcher_prefix += "/";
 
-    let mut shells: HashMap<String, RefCell<Repl>> = HashMap::new();
+    let mut repls: HashMap<String, RefCell<Repl>> = HashMap::new();
 
     println!("Starting server at {:?}", conf.socket_addr);
     match TcpListener::bind(conf.socket_addr) {
@@ -42,7 +42,7 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
 
                                 if *pass != conf.passcode {
                                     println!("Passcode {pass} is invalid");
-                                    _ = conn.write_all(b"Invalid passcode");
+                                    _ = conn.write_all(b"ERRROR: Invalid passcode");
                                     _ = conn.shutdown(std::net::Shutdown::Both);
                                     continue;
                                 }
@@ -50,14 +50,14 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                                 let len = lines.len();
                                 if lines[0].eq("create") {
                                     if len != 4 {
-                                        _ = conn.write_all(b"Server error: Invalid number of argument lines in request");
+                                        _ = conn.write_all(b"ERRROR: Server error: Invalid number of argument lines in request");
                                         _ = conn.shutdown(std::net::Shutdown::Both);
                                         continue;
                                     }
                                     let name = lines[1];
-                                    if shells.contains_key(name) {
+                                    if repls.contains_key(name) {
                                         println!("ERRROR: repl {} already exists", name);
-                                        _ = conn.write_all(b"Repl already exists");
+                                        _ = conn.write_all(b"ERRROR: Repl already exists");
                                     } else {
                                         let mut cmd = String::from(lines[2]);
                                         let dir = String::from(lines[3]);
@@ -72,7 +72,7 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                                             Ok(repl) => {
                                                 println!("Shell spawned");
                                                 _ = conn.write_all(b"REPL created succesfully");
-                                                shells.insert(name.to_string(), RefCell::new(repl));
+                                                repls.insert(name.to_string(), RefCell::new(repl));
                                                 println!("  REPL: {} created", name);
                                             }
                                             Err(err) => {
@@ -85,19 +85,19 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                                     }
                                 } else if lines[0].eq("kill") {
                                     if lines.len() != 2 {
-                                        _ = conn.write_all(b"Server error: invalid number of argument lines in request");
+                                        _ = conn.write_all(b"ERRROR: Server error: invalid number of argument lines in request");
                                         _ = conn.shutdown(std::net::Shutdown::Both);
                                         continue;
                                     }
                                     let replid = lines[1];
 
-                                    if shells.contains_key(replid) {
+                                    if repls.contains_key(replid) {
                                         println!("  Killing repl: {replid}");
-                                        shells[replid].borrow_mut().kill();
-                                        shells.remove(replid);
+                                        repls[replid].borrow_mut().kill();
+                                        repls.remove(replid);
                                         _ = conn.write_all(b"Kill signal sent to shell\n");
                                     } else {
-                                        _ = conn.write_all(b"Shell does not exist\n");
+                                        _ = conn.write_all(b"ERRROR: Shell does not exist\n");
                                     }
                                 } else if lines[0].eq("run") {
                                     let runtype = lines[1];
@@ -105,15 +105,16 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                                     let codelines = match lines.split_first_chunk::<3>() {
                                         Some(val) => val.1,
                                         None => {
-                                            _ = conn
-                                                .write_all(b"Could not extract code from message");
+                                            _ = conn.write_all(
+                                                b"ERRROR: Could not extract code from message",
+                                            );
                                             _ = conn.shutdown(std::net::Shutdown::Both);
                                             println!("  Error reading code");
                                             continue;
                                         }
                                     };
                                     let code = codelines.join("\n");
-                                    if let Some(replcell) = shells.get(replid) {
+                                    if let Some(replcell) = repls.get(replid) {
                                         let mut repl = replcell.borrow_mut();
                                         match repl.evaluate(runtype, code.as_str()) {
                                             Ok(_) => {
@@ -127,8 +128,16 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                                             }
                                         };
                                     } else {
-                                        _ = conn.write_all(b"Repl does not exist");
+                                        _ = conn.write_all(b"ERRROR: Repl does not exist");
                                     }
+                                } else if lines[0].eq("ls") {
+                                    for name in repls.keys() {
+                                        _ = conn.write_all(name.as_bytes());
+                                        _ = conn.write_all(b"\n");
+                                    }
+                                } else {
+                                    _ = conn
+                                        .write_all(b"ERRROR: Client sent invalid message query");
                                 }
                             }
                             Err(err) => {

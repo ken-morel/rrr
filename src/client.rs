@@ -23,7 +23,10 @@ impl Client {
                 self.stream = Some(stream);
                 Ok(())
             }
-            Err(_) => Err("Could not connect to server, are you sure it's running?".to_string()),
+            Err(e) => Err(
+                "Could not connect to server, are you sure it's running?: ".to_string()
+                    + e.to_string().as_str(),
+            ),
         }
     }
     fn _request(&mut self, req: &String) -> Result<(), String> {
@@ -73,6 +76,13 @@ impl Client {
         req += "\n";
         self._request(&req)
     }
+    fn ls(&mut self) -> Result<(), String> {
+        let mut req = String::new();
+
+        req += "ls\n";
+        self._request(&req)
+    }
+
     pub fn query(&mut self, replid: &str, query: &str, msg: &str) -> Result<(), String> {
         let mut req = String::new();
 
@@ -122,6 +132,63 @@ pub fn run_client(
         let mut replid = args[0].clone();
         replid.remove(0);
         client.kill_repl(replid.as_str())
+    } else if args[0].starts_with("%") {
+        println!("RRR repl");
+        let mut replid = args[0].clone();
+        replid.remove(0);
+        let runtype = "r";
+        let mut running = true;
+        while running {
+            let mut prompt = String::new();
+            if client.query(replid.as_str(), ".p", "").is_err() {
+                prompt += ".";
+                prompt += replid.as_str();
+                prompt += "% ";
+            } else {
+                for ln in &mut client {
+                    prompt += ln.as_str();
+                }
+                prompt = prompt.trim().to_string();
+                if prompt.starts_with("ERRROR") {
+                    prompt += "\n> ";
+                } else {
+                    prompt += " ";
+                }
+            }
+            print!("{prompt}");
+            _ = std::io::stdout().flush();
+            let mut code = String::new();
+            if let Err(e) = std::io::stdin().read_line(&mut code) {
+                println!("ERRROR: reading from stdin {e}");
+                continue;
+            }
+            if code.starts_with("/") {
+                if code.starts_with("/k") {
+                    if let Err(e) = client.kill_repl(replid.as_str()) {
+                        println!("ERRROR: {e}");
+                        running = false;
+                    }
+                } else if code.starts_with("/s") {
+                    replid = code.split_at(3).1.to_string();
+                } else if code.starts_with("/q") {
+                    break;
+                }
+            } else if code.starts_with("!") {
+                code.remove(0);
+                std::process::Command::new("sh")
+                    .arg("-c")
+                    .arg(code.as_str());
+            } else if let Err(e) = client.query(replid.as_str(), runtype, code.as_str()) {
+                println!("ERRROR: querying server: {e}");
+            }
+            for ln in &mut client {
+                println!("{ln}");
+                _ = std::io::stdout().flush();
+            }
+        }
+        Ok(())
+    } else if args[0].starts_with("*") {
+        client.ls()
     } else {
         // <name>
         let runtype = if let Some(tp) = args.get(1) {
@@ -136,7 +203,7 @@ pub fn run_client(
             let mut content = String::new();
             std::io::stdin()
                 .read_to_string(&mut content)
-                .expect("Error");
+                .expect("Error reading code from stdin");
             content
         };
         client.query(args[0].as_str(), runtype, content.as_str())

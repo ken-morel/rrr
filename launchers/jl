@@ -26,13 +26,14 @@ function julia_main(_)
         code_string = if runtype == "r"
             "Base.show(stdout, \"text/plain\", $(code))"
         elseif runtype == "t"
-            code = "println(typeof($(code)))"
+            code = "print(typeof($(code)))"
         elseif runtype == "e"
             code
+        elseif runtype == ".p"
+            "print(\"julia> \")"
         else
-            "print(\"Not implemented\")"
+            "print(\"Not implemented command $(runtype)\")"
         end
-
 
         try
             include_string(session_module, code_string)

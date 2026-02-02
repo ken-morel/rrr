@@ -20,6 +20,8 @@ that to use the default launchers, the server should be launched from the projec
 root directory, you could also install with the `./install` script, which
 copies the `rrr` to `/usr/bin`, copies launchers to `/usr/share/rrr/launchers`
  and creates an `rrr-server` script in `/usr/bin` to start the server.
+When installing rrr, the install script will ask request elevation and will ask
+you for rrr password, if you set a password make sure your client also uses it.
 
 ## rrr sever
 
@@ -39,8 +41,8 @@ rrr p=1234 ip=127.0.0.1 l=/usr/share/rrr/launchers server
 
 ### passcode
 
-Both the server and client take the `k=` configuration which specifies
-a passcode the client will send it it's requests for the server to verify
+Both the server and client take the `k=` configuration or `RRR_K` environment variable
+which specifies a passcode the client will send it it's requests for the server to verify
 with it's own. Just plain comparism, no hashing or something.
 
 ## rrr client
@@ -121,6 +123,29 @@ rrr -<replname>
 # e.g
 rrr -jl-shell
 ```
+
+### listing repls
+
+```bash
+rrr *
+```
+
+### Running a repl
+
+If you want to interface your repl with a repl interface you can use:
+```bash
+rrr %<raplname>
+# e.g
+rrr %jl
+```
+
+This will start a client which will query everytime you hit enter and will
+query the shell for the prompt with a `.p` type query. You can use escapes like:
+
+- `\k`: to kill the repl and exit
+- `\q`: to quit the repl
+- `\s <replid>`: To switch repl
+- `!<cmd>`: to run a shell command(use this to create the repl for example).
 
 ### Client options
 

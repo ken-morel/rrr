@@ -26,6 +26,8 @@ while True:
         elif runtype == "r":
             compiled_code = compile(code_to_run, '<stdin>', 'exec')
             print(eval(compiled_code, session_globals))
+        elif runtype == ".p":
+            print(">>>")
         else:
             print("Not implemented")
     except Exception:
