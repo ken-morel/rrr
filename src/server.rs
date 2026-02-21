@@ -31,21 +31,20 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                         let mut buf = String::new();
                         match conn.read_to_string(&mut buf) {
                             Ok(_) => {
-                                let splits = buf.trim().split("\n").collect::<Vec<&str>>();
-                                let (pass, lines) = match splits.split_first() {
-                                    Some(s) => s,
-                                    None => {
-                                        println!("Error, invalid request");
+                                let content = match super::cypher::uncypher(buf, &conf.passcode) {
+                                    Ok(content) => content,
+                                    Err(msg) => {
+                                        println!(
+                                            "ERRROR: Invalid request could not be decyphered: {}",
+                                            msg
+                                        );
+                                        _ = conn.write_all(b"ERRROR: Invalid passcode: ");
+                                        _ = conn.write_all(msg.as_bytes());
+                                        _ = conn.shutdown(std::net::Shutdown::Both);
                                         continue;
                                     }
                                 };
-
-                                if *pass != conf.passcode {
-                                    println!("Passcode {pass} is invalid");
-                                    _ = conn.write_all(b"ERRROR: Invalid passcode");
-                                    _ = conn.shutdown(std::net::Shutdown::Both);
-                                    continue;
-                                }
+                                let lines = content.lines().collect::<Vec<_>>();
 
                                 let len = lines.len();
                                 if lines[0].eq("create") {
@@ -80,12 +79,13 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                                                 let mut msg = String::from("Errror creating repl:");
                                                 msg += err.to_string().as_str();
                                                 _ = conn.write_all(msg.as_bytes());
+                                                _ = conn.write_all(b"\n");
                                             }
                                         };
                                     }
                                 } else if lines[0].eq("kill") {
                                     if lines.len() != 2 {
-                                        _ = conn.write_all(b"ERRROR: Server error: invalid number of argument lines in request");
+                                        _ = conn.write_all(b"ERRROR: Server error: invalid number of argument lines in request\n");
                                         _ = conn.shutdown(std::net::Shutdown::Both);
                                         continue;
                                     }
@@ -106,7 +106,7 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                                         Some(val) => val.1,
                                         None => {
                                             _ = conn.write_all(
-                                                b"ERRROR: Could not extract code from message",
+                                                b"ERRROR: Could not extract code from message\n",
                                             );
                                             _ = conn.shutdown(std::net::Shutdown::Both);
                                             println!("  Error reading code");
@@ -116,28 +116,31 @@ pub fn run_server(conf: ServerConfig) -> Result<(), String> {
                                     let code = codelines.join("\n");
                                     if let Some(replcell) = repls.get(replid) {
                                         let mut repl = replcell.borrow_mut();
-                                        match repl.evaluate(runtype, code.as_str()) {
+                                        match repl.evaluate(&runtype, code.as_str()) {
                                             Ok(_) => {
                                                 for line in repl.by_ref() {
-                                                    _ = conn.write_all(line.as_bytes());
+                                                    _ = conn.write_all(&line);
                                                     _ = conn.write_all(b"\n");
                                                 }
                                             }
                                             Err(err) => {
                                                 _ = conn.write_all(err.as_bytes());
+                                                _ = conn.write_all(b"\n");
                                             }
                                         };
                                     } else {
                                         _ = conn.write_all(b"ERRROR: Repl does not exist");
                                     }
                                 } else if lines[0].eq("ls") {
-                                    for name in repls.keys() {
+                                    for (name, repl) in &repls {
                                         _ = conn.write_all(name.as_bytes());
+                                        _ = conn.write_all(b" ");
+                                        _ = conn.write_all(repl.borrow().exe.as_bytes());
                                         _ = conn.write_all(b"\n");
                                     }
                                 } else {
                                     _ = conn
-                                        .write_all(b"ERRROR: Client sent invalid message query");
+                                        .write_all(b"ERRROR: Client sent invalid message query\n");
                                 }
                             }
                             Err(err) => {

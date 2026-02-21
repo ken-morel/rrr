@@ -1,22 +1,20 @@
-pub fn read_line<T>(stream: T) -> Option<String>
+pub fn read_line<T>(stream: T) -> Option<Vec<u8>>
 where
     T: std::io::Read,
 {
-    let mut str = String::new();
-    for rbyte in stream.bytes() {
-        if let Ok(byte) = rbyte {
-            str.push(byte.into());
-            if str.ends_with('\n') {
-                str.remove(str.len() - 1);
-                return Some(str);
-            }
-        } else {
+    //PERF: Something like this
+    // let bytes: Vec<u8> = stream.bytes().flatten().take_while(|i| *i != 10).collect();
+    let mut bytes = Vec::new();
+    let mut empty = true;
+    for b in stream.bytes() {
+        empty = false;
+        let b = b.ok()?;
+        if b == 10 {
             break;
+        } else {
+            bytes.push(b);
         }
     }
-    if !str.is_empty() {
-        Some(str)
-    } else {
-        None
-    }
+
+    if !empty { Some(bytes) } else { None }
 }

@@ -1,7 +1,7 @@
 # rrr
 
 `rrr` the Remote Repl Runner. A client and a server, communicating via tcp
-sockets to help you manage and interact with shells, or other kind of repl. 
+sockets to help you manage and interact with shells, or other kind of repl.
 
 Or to be more broad, rrr actually permits you to create and communicate with managed
 a process via pipes.
@@ -39,11 +39,12 @@ You may pass additional information
 rrr p=1234 ip=127.0.0.1 l=/usr/share/rrr/launchers server
 ```
 
-### passcode
+### security
 
 Both the server and client take the `k=` configuration or `RRR_K` environment variable
-which specifies a passcode the client will send it it's requests for the server to verify
-with it's own. Just plain comparism, no hashing or something.
+which specifies a passcode. The passcode will be used to encrypt the query content
+with `simple_encrypt`, and the server will attempt to use it's own passcode
+to decrypt the data.
 
 ## rrr client
 
@@ -56,7 +57,7 @@ During runtime, rrr looks for launchers in a relative `launchers/` directory,
 the repository contains a few launchers for interacting with fish/python/julia
 shells.
 To create a new launcher, you could just inspire yourself of one of them and
-place an executable file in `launchers/`. 
+place an executable file in `launchers/`.
 
 The fish runner.
 ```fish

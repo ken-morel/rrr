@@ -31,14 +31,11 @@ impl Client {
     }
     fn _request(&mut self, req: &String) -> Result<(), String> {
         self.connect()?;
+        let query = super::cypher::cypher(req, &self.config.passcode).map_err(|e| {
+            format!("Could not cypher data with passcode to send query to client: {e}",)
+        })?;
         if let Some(stream) = &mut self.stream {
-            if let Err(e) = stream.write_all((self.config.passcode.clone() + "\n").as_bytes()) {
-                return Err(
-                    "Error querying server, sending initial passcode".to_string()
-                        + e.to_string().as_str(),
-                );
-            }
-            if let Err(e) = stream.write_all(req.as_bytes()) {
+            if let Err(e) = stream.write_all(query.as_bytes()) {
                 return Err("Error sending query to server: ".to_string() + e.to_string().as_str());
             }
             if let Err(e) = stream.shutdown(std::net::Shutdown::Write) {
@@ -97,7 +94,7 @@ impl Client {
 }
 
 impl Iterator for Client {
-    type Item = String;
+    type Item = Vec<u8>;
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(stream) = &mut self.stream {
             read_line(stream)
@@ -141,24 +138,25 @@ pub fn run_client(
         let runtype = "r";
         let mut running = true;
         while running {
-            let mut prompt = String::new();
+            let mut prompt = Vec::new();
             if client.query(replid.as_str(), ".p", "").is_err() {
-                prompt += ".";
-                prompt += replid.as_str();
-                prompt += "% ";
+                prompt.append(&mut ".".as_bytes().to_vec());
+                prompt.append(&mut replid.as_bytes().to_vec());
+                prompt.append(&mut "% ".as_bytes().to_vec());
             } else {
-                for ln in &mut client {
-                    prompt += ln.as_str();
+                for mut ln in &mut client {
+                    prompt.append(&mut ln);
                 }
-                prompt = prompt.trim().to_string();
-                if prompt.starts_with("ERRROR") {
-                    prompt += "\n> ";
+                if prompt.starts_with("ERRROR".as_bytes()) {
+                    prompt.append(&mut "\n> ".as_bytes().to_vec());
                 } else {
-                    prompt += " ";
+                    prompt.append(&mut " ".as_bytes().to_vec());
                 }
             }
-            print!("{prompt}");
-            _ = std::io::stdout().flush();
+            let mut stdout = std::io::stdout().lock();
+            _ = stdout.write_all(&prompt);
+            _ = stdout.flush();
+            drop(stdout);
             let mut code = String::new();
             if let Err(e) = std::io::stdin().read_line(&mut code) {
                 println!("ERRROR: reading from stdin {e}");
@@ -174,10 +172,14 @@ pub fn run_client(
                     replid = code.split_at(3).1.to_string();
                 } else if code.starts_with("/q") {
                     break;
+                } else {
+                    println!("Invalid slash code")
                 }
             } else if code.starts_with("!") {
                 code.remove(0);
                 match &mut std::process::Command::new("sh")
+                    .env("LANG", "en_US.UTF-8")
+                    .env("LC_ALL", "en_US.UTF-8")
                     .arg("-c")
                     .stdin(std::process::Stdio::inherit())
                     .stdout(std::process::Stdio::inherit())
@@ -193,9 +195,11 @@ pub fn run_client(
             } else if let Err(e) = client.query(replid.as_str(), runtype, code.as_str()) {
                 println!("ERRROR: querying server: {e}");
             }
+            let mut stdout = std::io::stdout().lock();
             for ln in &mut client {
-                println!("{ln}");
-                _ = std::io::stdout().flush();
+                _ = stdout.write_all(&ln);
+                _ = stdout.write_all(b"\n");
+                _ = stdout.flush();
             }
         }
         Ok(())
@@ -218,8 +222,11 @@ pub fn run_client(
         };
         client.query(args[0].as_str(), runtype, content.as_str())
     }?;
+    let mut stdout = std::io::stdout().lock();
     for line in client {
-        println!("{line}");
+        _ = stdout.write_all(&line);
+        _ = stdout.write_all(b"\n");
     }
+    _ = stdout.flush();
     Ok(())
 }

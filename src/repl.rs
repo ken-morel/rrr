@@ -16,8 +16,8 @@ pub fn repl_launcher(name: &str) -> Box<PathBuf> {
 }
 
 pub struct Repl {
-    // stdout: RefCell<ChildStdout>,
     process: Child,
+    pub exe: String,
 }
 
 impl Repl {
@@ -27,7 +27,7 @@ impl Repl {
             None => {
                 return Err(String::from(
                     "Internal error constructing shell launcher path",
-                ))
+                ));
             }
         };
         let mut resolvedir = dir.replace(
@@ -45,6 +45,8 @@ impl Repl {
                 .to_string();
         }
         let child = match Command::new(launcher)
+            .env("LANG", "en_US.UTF-8")
+            .env("LC_ALL", "en_US.UTF-8")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
@@ -54,7 +56,10 @@ impl Repl {
             Ok(child) => child,
             Err(err) => return Err(err.to_string()),
         };
-        Ok(Self { process: child })
+        Ok(Self {
+            process: child,
+            exe: exe.to_string(),
+        })
     }
 
     pub fn evaluate(&mut self, runtype: &str, txt: &str) -> Result<(), String> {
@@ -82,13 +87,13 @@ impl Repl {
     }
 }
 impl Iterator for Repl {
-    type Item = String;
-    fn next(&mut self) -> Option<String> {
+    type Item = Vec<u8>;
+    fn next(&mut self) -> Option<Vec<u8>> {
         match &mut self.process.stdout {
             None => None,
             Some(stdout) => {
                 let str = read_line(stdout)?;
-                if str.eq(END_TOKEN) {
+                if str.eq(END_TOKEN.as_bytes()) {
                     None
                 } else {
                     Some(str)

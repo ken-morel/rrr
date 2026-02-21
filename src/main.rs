@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 mod client;
 mod config;
+mod cypher;
 mod repl;
 mod server;
 mod utils;
