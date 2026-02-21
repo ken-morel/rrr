@@ -97,7 +97,16 @@ impl Iterator for Client {
     type Item = Vec<u8>;
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(stream) = &mut self.stream {
-            read_line(stream)
+            match super::cypher::uncypher(
+                String::from_utf8(read_line(stream)?).expect("Error deconding stream"),
+                &self.config.passcode,
+            ) {
+                Ok(s) => Some(s.as_bytes().to_vec()),
+                Err(s) => {
+                    println!("ERRROR reading stream, could not uncyhper text: {s}");
+                    None
+                }
+            }
         } else {
             None
         }
@@ -132,7 +141,28 @@ pub fn run_client(
         replid.remove(0);
         client.kill_repl(replid.as_str())
     } else if args[0].starts_with("%") {
-        println!("RRR repl");
+        let mut getinput: Box<dyn FnMut(&[u8]) -> Result<String, String>> =
+            match rustyline::DefaultEditor::new() {
+                Ok(mut rl) => Box::new(move |prompt_bytes: &[u8]| {
+                    let prompt_str = String::from_utf8_lossy(prompt_bytes);
+
+                    let line = rl.readline(&prompt_str).map_err(|e| e.to_string())?;
+                    let _ = rl.add_history_entry(&line);
+                    Ok(line)
+                }),
+                Err(_) => Box::new(|prompt_bytes: &[u8]| {
+                    let mut stdout = std::io::stdout();
+                    stdout.write_all(prompt_bytes).map_err(|e| e.to_string())?;
+                    stdout.flush().map_err(|e| e.to_string())?;
+
+                    let mut code = String::new();
+                    std::io::stdin()
+                        .read_line(&mut code)
+                        .map_err(|e| e.to_string())?;
+                    Ok(code)
+                }),
+            };
+
         let mut replid = args[0].clone();
         replid.remove(0);
         let runtype = "r";
@@ -145,23 +175,22 @@ pub fn run_client(
                 prompt.append(&mut "% ".as_bytes().to_vec());
             } else {
                 for mut ln in &mut client {
+                    if prompt.trim_ascii().len() > 0 {
+                        prompt.push(10); // NEWLINE
+                    }
                     prompt.append(&mut ln);
                 }
                 if prompt.starts_with("ERRROR".as_bytes()) {
                     prompt.append(&mut "\n> ".as_bytes().to_vec());
-                } else {
-                    prompt.append(&mut " ".as_bytes().to_vec());
                 }
             }
-            let mut stdout = std::io::stdout().lock();
-            _ = stdout.write_all(&prompt);
-            _ = stdout.flush();
-            drop(stdout);
-            let mut code = String::new();
-            if let Err(e) = std::io::stdin().read_line(&mut code) {
-                println!("ERRROR: reading from stdin {e}");
-                continue;
-            }
+            let mut code = match getinput(&prompt) {
+                Ok(txt) => txt,
+                Err(e) => {
+                    println!("ERRROR: reading from stdin {e}");
+                    continue;
+                }
+            };
             if code.starts_with("/") {
                 if code.starts_with("/k") {
                     if let Err(e) = client.kill_repl(replid.as_str()) {
@@ -196,9 +225,14 @@ pub fn run_client(
                 println!("ERRROR: querying server: {e}");
             }
             let mut stdout = std::io::stdout().lock();
+            let mut first = true;
             for ln in &mut client {
+                if first {
+                    first = false;
+                } else {
+                    _ = stdout.write_all(b"\n");
+                }
                 _ = stdout.write_all(&ln);
-                _ = stdout.write_all(b"\n");
                 _ = stdout.flush();
             }
         }

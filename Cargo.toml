@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 base64 = "0.22.1"
+rustyline = "17.0.2"
 simple-encrypt = "0.1.3"

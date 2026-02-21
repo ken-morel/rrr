@@ -8,16 +8,18 @@ pub fn normalize_key(code: &str) -> Vec<u8> {
 }
 
 pub fn cypher(txt: &String, code: &str) -> Result<String, String> {
-    Ok(general_purpose::STANDARD
-        .encode(encrypt_string(txt, &normalize_key(code)).map_err(|e| format!("{e:#}"))?))
+    Ok(general_purpose::STANDARD.encode(
+        encrypt_string(txt, &normalize_key(code))
+            .map_err(|e| format!("Could not encrypt data: {e:#}"))?,
+    ))
 }
 
 pub fn uncypher(txt: String, code: &str) -> Result<String, String> {
     decrypt_string(
         &general_purpose::STANDARD
-            .decode(txt)
-            .map_err(|e| format!("{e:#}"))?,
+            .decode(txt.clone())
+            .map_err(|e| format!("Could not decode base64({txt}): {e:#}"))?,
         &normalize_key(code),
     )
-    .map_err(|e| format!("{e:#}"))
+    .map_err(|e| format!("Could  not decrypt data: {e:#}"))
 }
